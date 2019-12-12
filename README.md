@@ -4,7 +4,10 @@ Tools for evaluating and preparing content for preservation in AWS
 This tool seeks the alignment of the files listed in an "Accession Catalog" with files present in a "Restored Files" database. In the process of alignment, the goal is to classify all of the restored files into one the following five categories:
 
   1. __perfect matches__: files that are known and unaltered -- can be transferred
-  2. __discards__: files that are no longer needed (deaccessions) or duplicates of perfect matches
+  2. __discards__: files that are no longer needed, which can be subdivided into these types:
+    a. __deaccessions__: files we no longer need (e.g. Zoomify tiles)
+    b. __duplicates__: extra copies of perfect matches
+    c. __stowaways__: files that were sent to tape unintentionally (e.g., .DS_Store, thumbs.db, system volume info, etc.) 
   3. __altered files__: files that are known but altered (md5 mismatch)
   4. __missing files__: files that are in the accession catalog but not found in the restored files
   5. __x-files__: 'unexplained' files, or files that are among our restored files but are of unknown origin
