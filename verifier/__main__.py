@@ -38,6 +38,7 @@ def main():
 
     summary_handle = open(os.path.join(outdir, 'summary.csv'), 'w', 1)
     changed_handle = open(os.path.join(outdir, 'changes.csv'), 'w', 1)
+
     for batchname, date in sorted(batches.keys()):
         print(f'\n{batchname.upper()}\n{"="*len(batchname)}')
         batch = Batch(batchname, date)
@@ -48,29 +49,18 @@ def main():
             batch.load_from(dirlist, config.excludes)
 
         print(f"Total Assets: {len(batch.assets)}")
-        print(f"Total Lines: {sum([len(dirlist.lines) for dirlist in batch.dirlists])}")
+        lines = sum([len(dirlist.lines) for dirlist in batch.dirlists])
+        print(f"Total Lines: {lines}")
         print(f"Checking database for copies of assets...")
 
         batch_summary = batch.lookup_assets(cursor)
         summary_handle.write(','.join(batch_summary) + '\n')
+
         for change in batch.changes:
             print(change)
             changed_handle.write(','.join(change) + '\n')
+
         batch.create_reports(outdir)
-
-        """
-        for asset in batch.assets:
-            query = '''SELECT * FROM files WHERE filename=? and md5=? and bytes=?;'''
-            data = (asset.filename, asset.md5, asset.bytes)
-            result = cursor.execute(query, data).fetchall()
-            if len(result) == 1:
-                print(f"{asset.filename}, {asset.md5} --> Exact match!")
-            elif len(result) > 1:
-                print(f"Multiple files: {result}")
-            elif len(result) == 0:
-                print(f"NOT FOUND: {asset.filename}")
-        """
-
 
 if __name__ == "__main__":
     main()

@@ -15,11 +15,15 @@ class Asset():
         self.bytes = int(bytes)
 
     def found(self, cursor):
-        fb_query  = '''SELECT * FROM files WHERE filename=? and bytes=?;'''
-        f_query   = '''SELECT * FROM files WHERE filename=?;'''
-        fmb_query = '''SELECT * FROM files WHERE filename=? and md5=? and bytes=?;'''
-        result = cursor.execute(fmb_query, (self.filename, self.md5, self.bytes))
-        if len(result.fetchall()) > 0:
+        fb_query  = """SELECT * FROM files 
+                        WHERE filename=? and bytes=?;"""
+        f_query   = """SELECT * FROM files 
+                        WHERE filename=?;"""
+        fmb_query = """SELECT * FROM files 
+                        WHERE filename=? and md5=? and bytes=?;"""
+        data = (self.filename, self.md5, self.bytes)
+        result = cursor.execute(fmb_query, data).fetchall()
+        if len(result) > 0:
             return True
         else:
             return False
@@ -66,7 +70,8 @@ class DirList():
 
         for row in csv.DictReader(csv_lines, delimiter="\t"):
             if row['Type'] == "File":
-                self.assets.append(Asset(row['File Name'], row['MD5'], row['File Size']))
+                asset = Asset(row['File Name'], row['MD5'], row['File Size'])
+                self.assets.append(asset)
 
     def display(self):
         print(self.filename.upper())
@@ -78,7 +83,10 @@ class DirList():
 
 
 def main():
-    dbpath = '/Users/westgard/Box Sync/AWSMigration/aws-migration-data/restored.db'
+    dbpath = ('/Users/westgard/Box Sync/'
+              'AWSMigration/aws-migration-data/'
+              'restored.db'
+              )
     conn = sqlite3.connect(dbpath)
     cursor = conn.cursor()
     outputfile = open(sys.argv[2], 'w')
@@ -95,8 +103,13 @@ def main():
                     if asset.found(cursor):
                         dirlist.assets_found += 1
                 dirlist.display()
-                row = [dirlist.filename, len(dirlist.lines), len(dirlist.assets), 
-                       dirlist.assets_found, dirlist.bytes(), dirlist.path]
+                row = [dirlist.filename, 
+                       len(dirlist.lines), 
+                       len(dirlist.assets), 
+                       dirlist.assets_found,
+                       dirlist.bytes(), 
+                       dirlist.path
+                       ]
                 outputfile.write(','.join([str(i) for i in row]) + '\n')
 
     outputfile.close()

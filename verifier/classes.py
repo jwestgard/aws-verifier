@@ -20,9 +20,12 @@ class Asset():
 
     def check_status(self, cursor):
         changes = []
-        fmb_query = '''SELECT * FROM files WHERE filename=? and md5=? and bytes=?;'''
-        fb_query  = '''SELECT * FROM files WHERE filename=? and bytes=?;'''
-        f_query   = '''SELECT * FROM files WHERE filename=?;'''
+        fmb_query = """SELECT * FROM files 
+                        WHERE filename=? and md5=? and bytes=?;"""
+        fb_query  = """SELECT * FROM files 
+                        WHERE filename=? and bytes=?;"""
+        f_query   = """SELECT * FROM files 
+                        WHERE filename=?;"""
         if self.md5 is not None and self.bytes is not None:
             #print(f'Querying filename, md5, bytes...')
             data = (self.filename, self.md5, self.bytes)
@@ -142,23 +145,30 @@ class DirList():
 
     def assets(self):
         """
-        Return a list of Asset objects for all valid accession records in the DirList
+        Return a list of Asset objects for all valid accession records 
+        in the DirList
         """
         assets = []
         firstline = self.lines[0]
 
         # Handle dirlist-style files
+        ptrn = r'^(\d{2}/\d{2}/\d{4}\s+\d{2}:\d{2}\s[AP]M)\s+([0-9,]+)\s(.+?)$'
         if firstline.startswith('Volume in drive'):
             for n, line in enumerate(self.lines):
                 # check if the line describes an asset
-                match = re.match(
-                    r'^(\d{2}/\d{2}/\d{4}\s+\d{2}:\d{2}\s[AP]M)\s+([0-9,]+)\s(.+?)$', 
-                    line)
+                match = re.match(ptrn, line)
                 if match:
-                    timestamp = datetime.strptime(match.group(1), '%m/%d/%Y %I:%M %p')
-                    bytes = int(''.join([c for c in match.group(2) if c.isdigit()]))
+                    timestamp = datetime.strptime(
+                                    match.group(1), '%m/%d/%Y %I:%M %p'
+                                    )
+                    bytes = int(
+                        ''.join([c for c in match.group(2) if c.isdigit()])
+                        )
                     filename = match.group(3)
-                    asset = Asset(filename=filename, bytes=bytes, timestamp=timestamp)
+                    asset = Asset(filename=filename, 
+                                  bytes=bytes, 
+                                  timestamp=timestamp
+                                  )
                     assets.append(asset)
 
         # Handle semicolon-separated tabular files
@@ -169,9 +179,14 @@ class DirList():
                     self.dirlines += 1
                 else:
                     filename = os.path.basename(cols[0].rsplit('\\')[-1])
-                    timestamp = datetime.strptime(cols[1], '%m/%d/%Y %I:%M:%S %p')
+                    timestamp = datetime.strptime(cols[1], 
+                                                  '%m/%d/%Y %I:%M:%S %p'
+                                                  )
                     bytes = round(float(cols[2].replace(',', '')) * 1024)
-                    asset = Asset(filename=filename, bytes=bytes, timestamp=timestamp)
+                    asset = Asset(filename=filename, 
+                                  bytes=bytes, 
+                                  timestamp=timestamp
+                                  )
                     assets.append(asset)
 
         # Handle CSV files
@@ -180,13 +195,15 @@ class DirList():
                 delimiter = '\t'
             else:
                 delimiter = ','
-            mapping = {
-                'filename': ['Filename', 'File Name', 'FILENAME', 'Key', '"Filename"',
-                    '"Key"'],
-                'bytes': ['Size', 'SIZE', 'File Size', 'Bytes', 'BYTES', '"Size"'],
-                'timestamp': ['Mod Date', 'Moddate', 'MODDATE', '"Mod Date"'],
-                'md5': ['MD5', 'Other', 'Data', '"Other"', '"Data"']
-                }
+            mapping = {'filename':  ['Filename', 'File Name', 'FILENAME', 
+                                     'Key', '"Filename"', '"Key"'],
+                       'bytes':     ['Size', 'SIZE', 'File Size', 'Bytes', 
+                                     'BYTES', '"Size"'],
+                       'timestamp': ['Mod Date', 'Moddate', 'MODDATE', 
+                                     '"Mod Date"'],
+                       'md5':       ['MD5', 'Other', 'Data', '"Other"', 
+                                     '"Data"']
+            }
             columns = firstline.split(delimiter)
             lookup = {}
             for attribute, keys in mapping.items():
@@ -195,7 +212,9 @@ class DirList():
                         lookup[attribute] = key.replace('"','')
                         break
 
-            reader = csv.DictReader(self.lines, quotechar='"', delimiter=delimiter)
+            reader = csv.DictReader(self.lines, 
+                                    quotechar='"', 
+                                    delimiter=delimiter)
             for row in reader:
                 # Skip rows in Prange-style "CSV" files
                 if 'File Name' in row and any([
@@ -206,7 +225,9 @@ class DirList():
                     ]):
                     continue
                 else:
-                    asset = Asset(**{key: row[value] for key, value in lookup.items()})
+                    asset = Asset(
+                        **{key: row[value] for key, value in lookup.items()}
+                        )
                     assets.append(asset)
         return assets
 
