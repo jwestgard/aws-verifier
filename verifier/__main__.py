@@ -36,18 +36,29 @@ def main():
         else:
             batches[(batchname, date)] = [dirlist]
 
+    '''
     summary_handle = open(os.path.join(outdir, 'summary.csv'), 'w', 1)
     changed_handle = open(os.path.join(outdir, 'changes.csv'), 'w', 1)
+    '''
 
     for batchname, date in sorted(batches.keys()):
         print(f'\n{batchname.upper()}\n{"="*len(batchname)}')
         batch = Batch(batchname, date)
-        print(f'Batch includes the following inventory files:')
+        print(f' Batch includes the following inventory files:')
         for n, dirlist in enumerate(batches[(batchname, date)], 1):
-            print(f"  ({n}) {dirlist.filename}")
+            print(f"  ({n}) {dirlist.filename} ({len(dirlist.assets())})")
             batch.dirlists.append(dirlist)
             batch.load_from(dirlist, config.excludes)
+            batch.lookup_assets(cursor)
+        
+        '''
+        print(f" Accessions: {len(batch.accessions)}")
+        print(f" Excludes:   {len(batch.excluded)}")
+        print(f" Missing:    {len(batch.missing)}")
+        print(f" Changed:    {len(batch.changes)}")
+        '''
 
+        '''
         print(f"Total Assets: {len(batch.assets)}")
         lines = sum([len(dirlist.lines) for dirlist in batch.dirlists])
         print(f"Total Lines: {lines}")
@@ -61,6 +72,7 @@ def main():
             changed_handle.write(','.join(change) + '\n')
 
         batch.create_reports(outdir)
+        '''
 
 if __name__ == "__main__":
     main()
