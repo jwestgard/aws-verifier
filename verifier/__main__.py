@@ -9,6 +9,7 @@ import yaml
 
 from .classes import DirList
 from .classes import Batch
+from .upload import Package
 
 class Config():
     def __init__(self, path):
@@ -29,12 +30,15 @@ def main():
     batches = {}
 
     for file in os.listdir(invdir):
-        batchname, date, extra = file.split('_', 2)
-        dirlist = DirList(os.path.join(invdir, file))
-        if (batchname, date) in batches:
-            batches[(batchname, date)].append(dirlist)
-        else:
-            batches[(batchname, date)] = [dirlist]
+        try:
+            batchname, date, extra = file.split('_', 2)
+            dirlist = DirList(os.path.join(invdir, file))
+            if (batchname, date) in batches:
+                batches[(batchname, date)].append(dirlist)
+            else:
+                batches[(batchname, date)] = [dirlist]
+        except ValueError:
+            sys.stdout.write(f"Could not parse filename {file}\n")
 
     '''
     summary_handle = open(os.path.join(outdir, 'summary.csv'), 'w', 1)
@@ -49,8 +53,8 @@ def main():
             print(f"  ({n}) {dirlist.filename} ({len(dirlist.assets())})")
             batch.dirlists.append(dirlist)
             batch.load_from(dirlist, config.excludes)
-            batch.lookup_assets(cursor)
-        
+            #batch.lookup_assets(cursor)
+
         '''
         print(f" Accessions: {len(batch.accessions)}")
         print(f" Excludes:   {len(batch.excluded)}")

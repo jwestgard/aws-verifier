@@ -15,11 +15,11 @@ class Asset():
         self.bytes = int(bytes)
 
     def found(self, cursor):
-        fb_query  = """SELECT * FROM files 
+        fb_query  = """SELECT * FROM files
                         WHERE filename=? and bytes=?;"""
-        f_query   = """SELECT * FROM files 
+        f_query   = """SELECT * FROM files
                         WHERE filename=?;"""
-        fmb_query = """SELECT * FROM files 
+        fmb_query = """SELECT * FROM files
                         WHERE filename=? and md5=? and bytes=?;"""
         data = (self.filename, self.md5, self.bytes)
         result = cursor.execute(fmb_query, data).fetchall()
@@ -51,7 +51,7 @@ class DirList():
             except ValueError:
                 continue
         sys.exit(f"Cannot decode file at {self.path}")
-    
+
     def parse(self):
         csv_lines = []
         self.summary = {}
@@ -103,11 +103,11 @@ def main():
                     if asset.found(cursor):
                         dirlist.assets_found += 1
                 dirlist.display()
-                row = [dirlist.filename, 
-                       len(dirlist.lines), 
-                       len(dirlist.assets), 
+                row = [dirlist.filename,
+                       len(dirlist.lines),
+                       len(dirlist.assets),
                        dirlist.assets_found,
-                       dirlist.bytes(), 
+                       dirlist.bytes(),
                        dirlist.path
                        ]
                 outputfile.write(','.join([str(i) for i in row]) + '\n')

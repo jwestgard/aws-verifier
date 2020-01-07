@@ -20,11 +20,11 @@ class Asset():
 
     def check_status(self, cursor):
         changes = []
-        fmb_query = """SELECT * FROM files 
+        fmb_query = """SELECT * FROM files
                         WHERE filename=? and md5=? and bytes=?;"""
-        fb_query  = """SELECT * FROM files 
+        fb_query  = """SELECT * FROM files
                         WHERE filename=? and bytes=?;"""
-        f_query   = """SELECT * FROM files 
+        f_query   = """SELECT * FROM files
                         WHERE filename=?;"""
         if self.md5 is not None and self.bytes is not None:
             #print(f'Querying filename, md5, bytes...')
@@ -92,7 +92,7 @@ class Batch():
                f"Matches: {matches}, ",
                f"Duplicates: {duplicates}, ",
                f"Not Found: {not_found}"))
-        return (self.name, self.date, str(total_assets), 
+        return (self.name, self.date, str(total_assets),
                 str(matches), str(duplicates), str(not_found))
 
 
@@ -112,9 +112,9 @@ class Batch():
             with open(path, 'w') as handle:
                 writer = csv.DictWriter(handle, fieldnames=fieldnames)
                 for asset in data:
-                    writer.writerow({'md5': asset.md5, 
+                    writer.writerow({'md5': asset.md5,
                                      'filename': asset.filename,
-                                     'bytes': asset.bytes, 
+                                     'bytes': asset.bytes,
                                      'timestamp': asset.timestamp
                                      })
 
@@ -145,7 +145,7 @@ class DirList():
 
     def assets(self):
         """
-        Return a list of Asset objects for all valid accession records 
+        Return a list of Asset objects for all valid accession records
         in the DirList
         """
         assets = []
@@ -165,8 +165,8 @@ class DirList():
                         ''.join([c for c in match.group(2) if c.isdigit()])
                         )
                     filename = match.group(3)
-                    asset = Asset(filename=filename, 
-                                  bytes=bytes, 
+                    asset = Asset(filename=filename,
+                                  bytes=bytes,
                                   timestamp=timestamp
                                   )
                     assets.append(asset)
@@ -179,12 +179,12 @@ class DirList():
                     self.dirlines += 1
                 else:
                     filename = os.path.basename(cols[0].rsplit('\\')[-1])
-                    timestamp = datetime.strptime(cols[1], 
+                    timestamp = datetime.strptime(cols[1],
                                                   '%m/%d/%Y %I:%M:%S %p'
                                                   )
                     bytes = round(float(cols[2].replace(',', '')) * 1024)
-                    asset = Asset(filename=filename, 
-                                  bytes=bytes, 
+                    asset = Asset(filename=filename,
+                                  bytes=bytes,
                                   timestamp=timestamp
                                   )
                     assets.append(asset)
@@ -195,13 +195,13 @@ class DirList():
                 delimiter = '\t'
             else:
                 delimiter = ','
-            mapping = {'filename':  ['Filename', 'File Name', 'FILENAME', 
+            mapping = {'filename':  ['Filename', 'File Name', 'FILENAME',
                                      'Key', '"Filename"', '"Key"'],
-                       'bytes':     ['Size', 'SIZE', 'File Size', 'Bytes', 
+                       'bytes':     ['Size', 'SIZE', 'File Size', 'Bytes',
                                      'BYTES', '"Size"'],
-                       'timestamp': ['Mod Date', 'Moddate', 'MODDATE', 
+                       'timestamp': ['Mod Date', 'Moddate', 'MODDATE',
                                      '"Mod Date"'],
-                       'md5':       ['MD5', 'Other', 'Data', '"Other"', 
+                       'md5':       ['MD5', 'Other', 'Data', '"Other"',
                                      '"Data"']
             }
             columns = firstline.split(delimiter)
@@ -212,8 +212,8 @@ class DirList():
                         lookup[attribute] = key.replace('"','')
                         break
 
-            reader = csv.DictReader(self.lines, 
-                                    quotechar='"', 
+            reader = csv.DictReader(self.lines,
+                                    quotechar='"',
                                     delimiter=delimiter)
             for row in reader:
                 # Skip rows in Prange-style "CSV" files
@@ -259,7 +259,7 @@ class DirList():
     # otherwise add to extra line count
     self.extralines += 1
     #print(line)
-#if len(assets) + self.dirlines + self.extralines == len(self.lines) and \ 
+#if len(assets) + self.dirlines + self.extralines == len(self.lines) and \
 if len(self.assets) == self.reported_assetcount:
     print(len(self.assets), self.reported_assetcount)
     print(self.size(), self.reported_bytes)
