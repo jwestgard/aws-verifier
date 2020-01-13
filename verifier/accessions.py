@@ -80,6 +80,8 @@ class DirList():
         print(f'Could not read directory listing file {self.path}')
         sys.exit(1)
 
+    def __iter__(self):
+        
         '''
         # Handle dirlist-style files
         ptrn = r'^(\d{2}/\d{2}/\d{4}\s+\d{2}:\d{2}\s[AP]M)\s+([0-9,]+)\s(.+?)$'

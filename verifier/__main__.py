@@ -50,7 +50,12 @@ def main():
         if batch.identifier == "Archive130":
             for asset in batch.assets[:1]:
                 matches = db.best_matches_for(asset)
-                print(matches)
+                if matches is None:
+                    self.not_found += 1
+                elif len(matches) == 1:
+                
+                elif len(matches) > 1:
+                    
 
     # (5) Write out archiver package
     package = Package(output_root)
