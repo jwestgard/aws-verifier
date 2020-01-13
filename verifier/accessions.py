@@ -21,34 +21,27 @@ class Asset():
         self.sourcefile = sourcefile
         self.sourceline = sourceline
 
-    def has_known_md5(self):
-        return self.md5 is not None
 
-    def check_status(self, cursor):
-        changes = []
-        fmb_query = """SELECT * FROM files
-                        WHERE filename=? and md5=? and bytes=?;"""
-        fb_query  = """SELECT * FROM files
-                        WHERE filename=? and bytes=?;"""
-        f_query   = """SELECT * FROM files
-                        WHERE filename=?;"""
-        if self.md5 is not None and self.bytes is not None:
-            data = (self.filename, self.md5, self.bytes)
-            results = cursor.execute(fmb_query, data).fetchall()
-            if len(results) == 0:
-                data = (self.filename, self.bytes)
-                results = cursor.execute(fb_query, data).fetchall()
-                if len(results) >= 1:
-                    for result in results:
-                        change = (self.filename, self.md5, result[2], result[4])
-                        changes.append(change)
-        elif self.bytes is not None:
-            data = (self.filename, self.bytes)
-            results = cursor.execute(fb_query, data).fetchall()
-        else:
-            data = (self.filename,)
-            results = cursor.execute(f_query, data).fetchall()
-        return len(results), changes
+class Batch():
+    """
+    Class representing a set of assets having been accessioned.
+    """
+    
+    def __init__(self, identifier, *dirlists):
+        self.identifier = identifier
+        self.dirlists = [d for d in dirlists]
+        self.assets = []
+        for dirlist in self.dirlists:
+            self.load_assets_from(dirlist)
+            
+    def has_hashes(self):
+        return all([asset.md5 is not None for asset in self.assets])
+
+    def duplicates(self):
+        return [(k,v) for k,v in self.assets.items() if len(v) > 1]
+
+    def load_assets_from(self, dirlist):
+        self.assets.extend([asset for asset in dirlist])
 
 
 class DirList():
@@ -63,31 +56,35 @@ class DirList():
         self.md5 = calculate_md5(path)
         self.dirlines = 0
         self.extralines = 0
+        self.lines = self.read()
+        self.type, self.delimiter = self.sniff_type()
+
+    def sniff_type(self):
+        if dirlist.firstline().startswith('Volume in drive'):
+            return ('dirlist', '(whitespace)')
+        elif ';' in dirlist.firstline():
+            return ('dirlist', ';')
+        else:
+            if '\t' in dirlist.firstline():
+                return ('csv', '\t')
+            else:
+                return ('csv', ',')
+
+    def read(self):
         for encoding in ['utf8', 'iso-8859-1', 'macroman', 'windows-1252']:
             try:
-                with open(path) as handle:
-                    self.lines = [line.strip() for line in handle.readlines()]
+                with open(self.path) as handle:
+                    return [line.strip() for line in handle.readlines()]
             except ValueError:
                 continue
-        if not hasattr(self, 'lines'):
-            print(f'Could not read directory listing file {self.path}')
-            sys.exit(1)
+        print(f'Could not read directory listing file {self.path}')
+        sys.exit(1)
 
-    def size(self):
-        return sum([asset.bytes for asset in self.assets()])
-
-    def assets(self):
-        """
-        Return a list of Asset objects for all valid accession records
-        in the DirList.
-        """
-        assets = []
-        firstline = self.lines[0]
-
+        '''
         # Handle dirlist-style files
         ptrn = r'^(\d{2}/\d{2}/\d{4}\s+\d{2}:\d{2}\s[AP]M)\s+([0-9,]+)\s(.+?)$'
-        if firstline.startswith('Volume in drive'):
-            for n, line in enumerate(self.lines):
+        if dirlist.type == 'dirlist' and dirlist.delimiter == '(whitespace)'
+            for n, line in enumerate(dirlist.lines):
                 # check if the line describes an asset
                 match = re.match(ptrn, line)
                 if match:
@@ -101,17 +98,17 @@ class DirList():
                     asset = Asset(filename=filename,
                                   bytes=bytes,
                                   timestamp=timestamp,
-                                  sourcefile=self.filename,
+                                  sourcefile=dirlist.filename,
                                   sourceline=n
                                   )
-                    assets.append(asset)
+                    self.assets.append(asset)
 
         # Handle semicolon-separated tabular files
-        elif ';' in firstline:
-            for n, line in enumerate(self.lines):
+        elif ';' in dirlist.firstline():
+            for n, line in enumerate(dirlist.lines):
                 cols = line.split(';')
                 if cols[2] == 'Directory':
-                    self.dirlines += 1
+                    dirlist.dirlines += 1
                 else:
                     filename = os.path.basename(cols[0].rsplit('\\')[-1])
                     timestamp = datetime.strptime(cols[1],
@@ -121,35 +118,34 @@ class DirList():
                     asset = Asset(filename=filename,
                                   bytes=bytes,
                                   timestamp=timestamp,
-                                  sourcefile=self.filename,
+                                  sourcefile=dirlist.filename,
                                   sourceline=n
                                   )
-                    assets.append(asset)
+                    self.assets.append(asset)
 
         # Handle CSV files
         else:
-            if '\t' in firstline:
+            if '\t' in dirlist.firstline():
                 delimiter = '\t'
             else:
                 delimiter = ','
-            mapping = {'filename':  ['Filename', 'File Name', 'FILENAME',
-                                     'Key', '"Filename"', '"Key"'],
-                       'bytes':     ['Size', 'SIZE', 'File Size', 'Bytes',
-                                     'BYTES', '"Size"'],
-                       'timestamp': ['Mod Date', 'Moddate', 'MODDATE',
-                                     '"Mod Date"'],
-                       'md5':       ['MD5', 'Other', 'Data', '"Other"',
-                                     '"Data"', 'md5']
-            }
-            columns = firstline.split(delimiter)
-            lookup = {}
-            for attribute, keys in mapping.items():
+            possible_keys = {
+                'filename': ['Filename', 'File Name', 'FILENAME', 'Key', 
+                    '"Filename"', '"Key"'],
+                'bytes': ['Size', 'SIZE', 'File Size', 'Bytes', 'BYTES', 
+                    '"Size"'],
+                'timestamp': ['Mod Date', 'Moddate', 'MODDATE', '"Mod Date"'],
+                'md5': ['MD5', 'Other', 'Data', '"Other"', '"Data"', 'md5']
+                }
+            columns = dirlist.firstline().split(delimiter)
+            operative_keys = {}
+            for attribute, keys in possible_keys.items():
                 for key in keys:
                     if key in columns:
-                        lookup[attribute] = key.replace('"','')
+                        operative_keys[attribute] = key.replace('"','')
                         break
 
-            reader = csv.DictReader(self.lines,
+            reader = csv.DictReader(dirlist.lines,
                                     quotechar='"',
                                     delimiter=delimiter
                                     )
@@ -163,25 +159,25 @@ class DirList():
                     ]):
                     continue
                 else:
-                    filename_key = lookup.get('filename')
+                    filename_key = operative_keys.get('filename')
                     if filename_key is not None:
                         filename = row[filename_key]
                     else:
                         filename = None
                     
-                    bytes_key = lookup.get('bytes')
+                    bytes_key = operative_keys.get('bytes')
                     if bytes_key is not None:
                         bytes = row[bytes_key]
                     else:
                         bytes = None
                     
-                    timestamp_key = lookup.get('timestamp')
+                    timestamp_key = operative_keys.get('timestamp')
                     if timestamp_key is not None:
                         timestamp = row[timestamp_key]
                     else:
                         timestamp = None
                     
-                    md5_key = lookup.get('md5')
+                    md5_key = operative_keys.get('md5')
                     if md5_key is not None:
                         md5 = row[md5_key]
                     else:
@@ -189,37 +185,19 @@ class DirList():
 
                     asset = Asset(filename=filename, bytes=bytes,         
                                   timestamp=timestamp, md5=md5,
-                                  sourcefile=self.filename,
+                                  sourcefile=dirlist.filename,
                                   sourceline=n
                                   )
-                    assets.append(asset)
-        return assets
+                    self.assets.append(asset)
+            '''
 
 
-class Batch():
-    """Class representing a set of assets having been accessioned."""
-    
-    def __init__(self, identifier, *dirlists):
-        self.identifier = identifier
-        self.dirlists = [d for d in dirlists]
-        self.assets = {}
-        for dirlist in self.dirlists:
-            for asset in dirlist.assets():
-                key = (asset.filename, asset.bytes, asset.md5)
-                self.assets.setdefault(key, []).append(
-                    f'{asset.sourcefile}:{asset.sourceline}'
-                    )
-        #print(self.duplicates())
 
-    def has_hashes(self):
-        for dirlist in self.dirlists:
-            for asset in dirlist.assets():
-                if asset.md5 is None:
-                    return False
-        return True
 
-    def duplicates(self):
-        return [(k,v) for k,v in self.assets.items() if len(v) > 1]
+
+
+
+
 
     '''
     def foo(self, name, date):

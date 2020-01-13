@@ -32,22 +32,25 @@ def main():
 
     # (3) Read accessions
     for batchname in sorted(batches.keys()):
-        print(f'\n{batchname.upper()}\n{"="*len(batchname)}')
-        dirlists = batches[batchname]
-        print(f"Creating {batchname} from {len(dirlists)} files ...")
-        batch = accessions.Batch(batchname, *dirlists)
-
+        print(f'\n{batchname.upper()}\n{"=" * len(batchname)}')
+        batch = accessions.Batch(batchname, *batches[batchname]) 
+        print(f"Creating {batch.identifier}...")
+        print(f"Source Files: {len(batch.dirlists)}")
+        for n, dirlist in enumerate(batch.dirlists, 1):
+            print(f"  ({n}) {dirlist.filename}: {len(dirlist.lines)} lines")
         print(f"Total Assets: {len(batch.assets)}")
-        lines = sum([len(dirlist.lines) for dirlist in batch.dirlists])
-        print(f"Total Lines: {lines}")
-        print(f"Checking database for copies of assets...")
-
+        
         #   a. check for md5
         #   b. exclude invisibles
         #   c. validate counts
         #   d. deduplicate
     
-    # (4) Lookup restored files
+        # (4) Lookup restored files
+        print(f"Querying database for copies of assets...")
+        if batch.identifier == "Archive130":
+            for asset in batch.assets[:1]:
+                matches = db.best_matches_for(asset)
+                print(matches)
 
     # (5) Write out archiver package
     package = Package(output_root)
