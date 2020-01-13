@@ -74,12 +74,12 @@ class DirList():
             sys.exit(1)
 
     def size(self):
-        return sum([asset.bytes for asset in self.assets])
+        return sum([asset.bytes for asset in self.assets()])
 
     def assets(self):
         """
         Return a list of Asset objects for all valid accession records
-        in the DirList
+        in the DirList.
         """
         assets = []
         firstline = self.lines[0]
@@ -215,10 +215,6 @@ class Batch():
         for dirlist in self.dirlists:
             for asset in dirlist.assets():
                 if asset.md5 is None:
-                    print(asset.filename, 
-                          asset.sourceline, 
-                          asset.sourcefile, 
-                          asset.md5)
                     return False
         return True
 
