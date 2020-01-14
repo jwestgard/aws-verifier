@@ -7,10 +7,23 @@ class Package():
 
     def __init__(self, destination):
         self.root = destination
+        self.batches = []
         if not os.path.exists(self.root):
             os.makedirs(self.root)
 
-    def add_batch_folder(self, name):
-        batch_path = os.path.join(self.root, "batches", name)
-        if not os.path.exists(batch_path):
-            os.makedirs(batch_path)
+    def add(self, batch):
+        self.batches.append(batch)
+
+    def write_batches(self):
+        for batch in self.batches:
+            batch_path = os.path.join(self.root, "batches", batch.identifier)
+            if not os.path.exists(batch_path):
+                os.makedirs(batch_path)
+            manifest_path = os.path.join(batch_path, "manifest.txt")
+            with open(manifest_path, 'w') as handle:
+                for asset in batch.assets:
+                    handle.write(f"{asset.restored.md5} {asset.restored.path}\n")
+            duplicates_path = os.path.join(batch_path, "duplicates.txt")
+            with open(duplicates_path, 'w') as handle:
+                for dupe in batch.duplicates:
+                    handle.write(f"{dupe}\n")

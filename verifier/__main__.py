@@ -16,8 +16,9 @@ def main():
     with open(configfile) as handle:
         config = yaml.safe_load(handle)
     source_root = os.path.join(config['ROOTDIR'], config['SOURCEDIR'])
-    output_root = os.path.join(config['ROOTDIR'], config['OUTPUTDIR'])
-    db = Database(os.path.join(config['ROOTDIR'], config['DATABASE']))
+    database = Database(os.path.join(config['ROOTDIR'], config['DATABASE']))
+    package = Package(os.path.join(config['ROOTDIR'], config['OUTPUTDIR']))
+
 
     # (2) set up the set of all accession batches
     batches = {}
@@ -46,19 +47,39 @@ def main():
         #   d. deduplicate
     
         # (4) Lookup restored files
-        print(f"Querying database for copies of assets...")
-        if batch.identifier == "Archive130":
-            for asset in batch.assets[:1]:
-                matches = db.best_matches_for(asset)
-                if matches is None:
-                    self.not_found += 1
-                elif len(matches) == 1:
-                
-                elif len(matches) > 1:
-                    
+        print(f"Querying database for copies of assets...", end='')
+        for n, asset in enumerate(batch.assets, 1):
+            if asset.md5 is not None:
+                matches = database.match_filename_bytes_md5(asset)
+                if matches is not None:
+                    if len(matches) == 1:
+                        asset.status = 'PerfectMatch'
+                        asset.restored = matches[0]
+                    elif len(matches) > 1:
+                        asset.status = 'WithDuplicates'
+                        asset.restored = matches[0]
+                        for dupe in matches[1:]:
+                            batch.duplicates.append(
+                                f"{asset.md5} {asset.restored.path} {dupe.path}")
+                else:
+                    asset.status = 'NotFound'
 
-    # (5) Write out archiver package
-    package = Package(output_root)
+        if all([a.status == 'PerfectMatch' for a in batch.assets]):
+            batch.status = 'Complete'
+            print('perfect match!')
+            package.add(batch)
+        elif all([a.status in ('PerfectMatch', 'WithDuplicates') for a in batch.assets]):
+            batch.status = 'WithDuplicates'
+            print('complete with duplicates!')
+            package.add(batch)
+        else:
+            print()
+
+    # (5) Write out upload package
+    print(f"Writing {len(package.batches)} complete batches to upload package...")
+    for batch in package.batches:
+        print(f"{batch.identifier} is complete and ready to load!")
+    package.write_batches()
 
     """
     summary_handle = open(os.path.join(outdir, 'summary.csv'), 'w', 1)
