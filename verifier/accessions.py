@@ -5,6 +5,7 @@ import re
 import sys
 
 from .utils import calculate_md5
+from .utils import human_readable
 
 
 class Asset():
@@ -12,7 +13,7 @@ class Asset():
     Class representing a single asset under preservation.
     """
 
-    def __init__(self, filename, sourcefile, sourceline, 
+    def __init__(self, filename, sourcefile, sourceline,
                  bytes=None, timestamp=None, md5=None):
         self.filename = filename
         self.bytes = bytes
@@ -27,7 +28,7 @@ class Batch():
     """
     Class representing a set of assets having been accessioned.
     """
-    
+
     def __init__(self, identifier, *dirlists):
         self.identifier = identifier
         self.dirlists = [d for d in dirlists]
@@ -36,21 +37,36 @@ class Batch():
         self.discards = []
         self.status = None
         for dirlist in self.dirlists:
-            self.load_assets_from(dirlist)
-            
+            self.load_assets(dirlist)
+
+    @property
+    def bytes(self):
+        return sum(
+            [asset.bytes for asset in self.assets if asset.bytes is not None]
+            )
+
+    @property
     def has_hashes(self):
-        return all([asset.md5 is not None for asset in self.assets])
+        return all(
+            [asset.md5 is not None for asset in self.assets]
+            )
 
-    def duplicates(self):
-        return [(k,v) for k,v in self.assets.items() if len(v) > 1]
-
-    def load_assets_from(self, dirlist):
+    def load_assets(self, dirlist):
         self.assets.extend([asset for asset in dirlist.assets])
+
+    def summary_dict(self):
+        return {'identifier': self.identifier,
+                'dirlists': {d.md5: d.filename for d in self.dirlists},
+                'num_assets': len(self.assets),
+                'bytes': self.bytes,
+                'human_readable': human_readable(self.bytes),
+                'status': self.status
+                }
 
 
 class DirList():
     """
-    Class representing an accession inventory list 
+    Class representing an accession inventory list
     making up all or part of a batch.
     """
 
@@ -63,9 +79,9 @@ class DirList():
         self.lines = self.read()
 
     def read(self):
-        for encoding in ['utf8', 'iso-8859-1', 'macroman', 'windows-1252']:
+        for encoding in ['utf8', 'iso-8859-1', 'macroman']:
             try:
-                with open(self.path) as handle:
+                with open(self.path, encoding=encoding) as handle:
                     return [line.strip() for line in handle.readlines()]
             except ValueError:
                 continue
@@ -77,8 +93,8 @@ class DirList():
         results = []
         # Examine the dirlist layout and set up iteration
         # Handle space-delimited dirlists
+        ptrn = r'^(\d{2}/\d{2}/\d{4}\s+\d{2}:\d{2}\s[AP]M)\s+([0-9,]+)\s(.+?)$'
         if self.lines[0].startswith('Volume in drive'):
-            ptrn = r'^(\d{2}/\d{2}/\d{4}\s+\d{2}:\d{2}\s[AP]M)\s+([0-9,]+)\s(.+?)$'
             for n, line in enumerate(self.lines):
                 # check if the line describes an asset
                 match = re.match(ptrn, line)
@@ -86,11 +102,13 @@ class DirList():
                     continue
                 else:
                     timestamp = datetime.strptime(match.group(1), '%m/%d/%Y %I:%M %p')
-                    bytes = int(''.join([c for c in match.group(2) if c.isdigit()]))
+                    bytes = int(''.join(
+                        [c for c in match.group(2) if c.isdigit()])
+                        )
                     filename = match.group(3)
                     results.append(
-                        Asset(filename=filename, bytes=bytes, timestamp=timestamp,
-                                sourcefile=self.filename, sourceline=n)
+                        Asset(filename=filename, bytes=bytes,
+                              timestamp=timestamp, sourcefile=self.filename, sourceline=n)
                         )
             return results
 
@@ -107,8 +125,9 @@ class DirList():
                                                   )
                     bytes = round(float(cols[2].replace(',', '')) * 1024)
                     results.append(
-                        Asset(filename=filename, bytes=bytes, timestamp=timestamp,
-                                 sourcefile=self.filename, sourceline=n)
+                        Asset(filename=filename, bytes=bytes,
+                              timestamp=timestamp, sourcefile=self.filename,
+                              sourceline=n)
                         )
             return results
 
@@ -116,9 +135,10 @@ class DirList():
         else:
             delimiter = '\t' if '\t' in self.lines[0] else ','
             possible_keys = {
-                'filename': ['Filename', 'File Name', 'FILENAME', 'Key', '"Filename"', 
-                                '"Key"'],
-                'bytes': ['Size', 'SIZE', 'File Size', 'Bytes', 'BYTES', '"Size"'],
+                'filename': ['Filename', 'File Name', 'FILENAME', 'Key',
+                             '"Filename"', '"Key"'],
+                'bytes': ['Size', 'SIZE', 'File Size', 'Bytes', 'BYTES',
+                          '"Size"'],
                 'timestamp': ['Mod Date', 'Moddate', 'MODDATE', '"Mod Date"'],
                 'md5': ['MD5', 'Other', 'Data', '"Other"', '"Data"', 'md5']
                 }
@@ -145,95 +165,32 @@ class DirList():
                         filename = row[filename_key]
                     else:
                         filename = None
-                
+
                     bytes_key = operative_keys.get('bytes')
                     if bytes_key is not None:
-                        bytes = row[bytes_key]
+                        raw = row[bytes_key]
+                        digits = ''.join([c for c in raw if c.isdigit()])
+                        if digits is not '':
+                            bytes = int(digits)
+                        else:
+                            bytes = None
                     else:
                         bytes = None
-                
+
                     timestamp_key = operative_keys.get('timestamp')
                     if timestamp_key is not None:
                         timestamp = row[timestamp_key]
                     else:
                         timestamp = None
-                
+
                     md5_key = operative_keys.get('md5')
                     if md5_key is not None:
                         md5 = row[md5_key]
                     else:
                         md5 = None
                     results.append(
-                        Asset(filename=filename, bytes=bytes, timestamp=timestamp, 
-                                 md5=md5, sourcefile=self.filename, sourceline=n)
+                        Asset(filename=filename, bytes=bytes,
+                              timestamp=timestamp, md5=md5,
+                              sourcefile=self.filename, sourceline=n)
                         )
             return results
-
-
-
-    '''
-    def foo(self, name, date):
-        self.name = name
-        self.date = date
-        self.assets = []
-        self.dirlists = []
-        self.accessions = []
-        self.excluded = []
-        self.missing = []
-        self.changes = []
-
-    def load_from(self, source, exclude_patterns):
-        for asset in source.assets():
-            if asset.filename in exclude_patterns:
-                self.excluded.append(asset)
-            else:
-                self.assets.append(asset)
-
-    def lookup_assets(self, cursor):
-        total_assets = len(self.assets)
-        matches = 0
-        duplicates = 0
-        not_found = 0
-        for asset in self.assets:
-            count, changes = asset.check_status(cursor)
-            if changes:
-                self.changes.extend(changes)
-            if count == 0:
-                print(f"{asset.filename} not found!")
-                not_found += 1
-            elif count == 1:
-                matches += 1
-            else:
-                matches += 1
-                duplicates += (count - 1)
-        print((f"Total: {total_assets}, ",
-               f"Matches: {matches}, ",
-               f"Duplicates: {duplicates}, ",
-               f"Not Found: {not_found}"))
-        return (self.name, self.date, str(total_assets),
-                str(matches), str(duplicates), str(not_found))
-
-
-    def create_reports(self, root):
-        fieldnames = ['md5', 'filename', 'bytes', 'timestamp']
-        batchdir = os.path.join(root, self.name)
-        if not os.path.exists(batchdir):
-            os.makedirs(batchdir)
-        # Write the various categories of asset to their respective files
-        for data, file in [
-            (self.assets, 'accessions.csv'),
-            (self.excluded, 'excludes.csv'),
-            (self.missing, 'missing.csv')
-            ]:
-            path = os.path.join(batchdir, file)
-            print(f'Writing to {path}...')
-            with open(path, 'w') as handle:
-                writer = csv.DictWriter(handle, fieldnames=fieldnames)
-                for asset in data:
-                    writer.writerow({'md5': asset.md5,
-                                     'filename': asset.filename,
-                                     'bytes': asset.bytes,
-                                     'timestamp': asset.timestamp
-                                     })
-    '''
-

@@ -1,3 +1,4 @@
+import json
 import os
 
 class Package():
@@ -14,7 +15,7 @@ class Package():
     def add(self, batch):
         self.batches.append(batch)
 
-    def write_batches(self):
+    def serialize_batches(self):
         for batch in self.batches:
             batch_path = os.path.join(self.root, "batches", batch.identifier)
             if not os.path.exists(batch_path):
@@ -22,8 +23,14 @@ class Package():
             manifest_path = os.path.join(batch_path, "manifest.txt")
             with open(manifest_path, 'w') as handle:
                 for asset in batch.assets:
-                    handle.write(f"{asset.restored.md5} {asset.restored.path}\n")
+                    handle.write(
+                        f"{asset.restored.md5} {asset.restored.path}\n"
+                        )
             duplicates_path = os.path.join(batch_path, "duplicates.txt")
             with open(duplicates_path, 'w') as handle:
                 for dupe in batch.duplicates:
                     handle.write(f"{dupe}\n")
+
+    def write_summary(self):
+        data = {b.identifier: b.summary_dict() for b in self.batches}
+        return json.dumps(data, indent=4, sort_keys=True)

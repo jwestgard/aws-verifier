@@ -7,13 +7,14 @@ class Database():
         self.cursor = self.connection.cursor()
 
     def match_filename_bytes_md5(self, asset):
-        query = """SELECT * FROM files WHERE filename=? and md5=? and bytes=?;"""
+        query = """
+            SELECT * FROM files WHERE filename=? and md5=? and bytes=?;
+            """
         signature = (asset.filename, asset.md5, asset.bytes)
         results = self.cursor.execute(query, signature).fetchall()
         if results:
-            print(results)
             return [RestoredAsset(*r[:5]) for r in results]
-        else: 
+        else:
             return None
 
     def match_filename_bytes(self, asset):
@@ -22,16 +23,16 @@ class Database():
         results = self.cursor.execute(query, signature).fetchall()
         if results:
             return [RestoredAsset(*r[:5]) for r in results]
-        else: 
+        else:
             return None
-        
+
     def match_filename(self, asset):
         query = """SELECT * FROM files WHERE filename=?;"""
         signature = (asset.filename,)
         results = self.cursor.execute(query, signature).fetchall()
         if results:
             return [RestoredAsset(*r[:5]) for r in results]
-        else: 
+        else:
             return None
 
 
