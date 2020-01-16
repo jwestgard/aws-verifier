@@ -1,6 +1,6 @@
 ROOTDIR:   "/Users/westgard/Box Sync/AWSMigration/"
 SOURCEDIR: "aws-migration-data/AccessionInventories/dcrprojects"
-OUTPUTDIR: "staging_area/libdc"
+OUTPUTDIR: "staging_area/libdc/package"
 DATABASE:  "aws-migration-data/restored.db"
 EXCLUDES:  
     - ".DS_Store"

@@ -19,9 +19,15 @@ class Asset():
         self.bytes = bytes
         self.timestamp = timestamp
         self.md5 = md5
+        self.restored = []
+        self.extra_copies = []
         self.sourcefile = sourcefile
         self.sourceline = sourceline
         self.status = 'Not checked'
+
+    @property
+    def signature(self):
+        return (self.filename, self.md5, self.bytes)
 
 
 class Batch():
@@ -33,8 +39,6 @@ class Batch():
         self.identifier = identifier
         self.dirlists = [d for d in dirlists]
         self.assets = []
-        self.duplicates = []
-        self.discards = []
         self.status = None
         for dirlist in self.dirlists:
             self.load_assets(dirlist)
@@ -62,6 +66,12 @@ class Batch():
                 'human_readable': human_readable(self.bytes),
                 'status': self.status
                 }
+    @property
+    def asset_root(self):
+        return os.path.commonpath([a.restored.path for a in self.assets])
+
+    def has_duplicates(self):
+        return len(self.assets) < len(set([a.signature for a in self.assets]))
 
 
 class DirList():
@@ -101,14 +111,17 @@ class DirList():
                 if not match:
                     continue
                 else:
-                    timestamp = datetime.strptime(match.group(1), '%m/%d/%Y %I:%M %p')
+                    timestamp = datetime.strptime(match.group(1), 
+                                                 '%m/%d/%Y %I:%M %p'
+                                                 )
                     bytes = int(''.join(
                         [c for c in match.group(2) if c.isdigit()])
                         )
                     filename = match.group(3)
                     results.append(
                         Asset(filename=filename, bytes=bytes,
-                              timestamp=timestamp, sourcefile=self.filename, sourceline=n)
+                              timestamp=timestamp, sourcefile=self.filename,
+                              sourceline=n)
                         )
             return results
 
@@ -149,7 +162,10 @@ class DirList():
                     if key in columns:
                         operative_keys[attribute] = key.replace('"','')
                         break
-            reader = csv.DictReader(self.lines, quotechar='"', delimiter=delimiter)
+            reader = csv.DictReader(self.lines,
+                                    quotechar='"',
+                                    delimiter=delimiter
+                                    )
             for n, row in enumerate(reader):
                 # Skip extra rows in Prange-style "CSV" files
                 if 'File Name' in row and any([
