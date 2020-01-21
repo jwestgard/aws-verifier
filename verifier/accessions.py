@@ -4,8 +4,8 @@ import os
 import re
 import sys
 
-from .utils import calculate_md5
-from .utils import human_readable
+from utils import calculate_md5
+from utils import human_readable
 
 
 class Asset():
@@ -111,7 +111,7 @@ class DirList():
                 if not match:
                     continue
                 else:
-                    timestamp = datetime.strptime(match.group(1), 
+                    timestamp = datetime.strptime(match.group(1),
                                                  '%m/%d/%Y %I:%M %p'
                                                  )
                     bytes = int(''.join(

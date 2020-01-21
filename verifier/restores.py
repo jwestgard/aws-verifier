@@ -35,6 +35,13 @@ class Database():
         else:
             return None
 
+    def lookup_batch(self, batch):
+        query = """SELECT * FROM accession_batches WHERE name=?;"""
+        existing = self.cursor.execute(query, (batch.identifier,)).fetchall()
+        if existing:
+            return existing.name
+        else:
+            return None
 
 class RestoredAsset():
 
