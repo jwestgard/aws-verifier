@@ -16,6 +16,7 @@ def calculate_md5(path):
 
 
 def human_readable(bytes):
+    """Return a human-readable representation of the input bytes."""
     for n, label in enumerate(['bytes', 'KiB', 'MiB', 'GiB', 'TiB']):
         value = bytes / (1024 ** n)
         if value < 1024:

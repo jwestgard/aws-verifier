@@ -1,44 +1,45 @@
-DROP TABLE IF EXISTS files;
+DROP TABLE IF EXISTS instances;
 DROP TABLE IF EXISTS dirlists;
 DROP TABLE IF EXISTS accessions;
-DROP TABLE IF EXISTS accessionBatches;
+DROP TABLE IF EXISTS accession_batches;
 
-CREATE TABLE files(
-    uuid       TEXT PRIMARY KEY UNIQUE NOT NULL,
-    bytes      INTEGER,
-    md5        TEXT,
-    filename   TEXT,
-    path       TEXT,
-    sourcefile INTEGER,
-    sourceline INTEGER,
-    action     TEXT,
-    FOREIGN KEY(sourcefile) REFERENCES dirlists(id)
+CREATE TABLE instances(
+    uuid         TEXT PRIMARY KEY UNIQUE NOT NULL,
+    filename     TEXT,
+    md5          TEXT,
+    bytes        INTEGER,
+    dirlist_id   INTEGER,
+    dirlist_line INTEGER,
+    path         TEXT,
+    action       TEXT,
+    FOREIGN KEY(dirlist_id) REFERENCES dirlists(id)
 );
 
 CREATE TABLE dirlists(
-    id         INTEGER PRIMARY KEY UNIQUE NOT NULL,
-    md5        TEXT,
-    filename   TEXT,
-    share      TEXT,
-    batch      TEXT
+    id          INTEGER PRIMARY KEY UNIQUE NOT NULL,
+    filename    TEXT,
+    md5         TEXT,
+    bytes       INTEGER,
+    batch_id    INTEGER,
+    FOREIGN KEY(batch_id) REFERENCES batches(id)
 );
 
-CREATE TABLE accessions(
-    id         INTEGER PRIMARY KEY UNIQUE NOT NULL,
-    filename   TEXT,
-    bytes      INTEGER,
-    md5        TEXT,
-    sourcefile INTEGER,
-    sourceline INTEGER,
-    FOREIGN KEY(sourceFile) REFERENCES dirlists(id)
+CREATE TABLE assets(
+    id          INTEGER PRIMARY KEY UNIQUE NOT NULL,
+    filename    TEXT,
+    md5         TEXT,
+    bytes       INTEGER,
+    source_id   INTEGER,
+    source_line INTEGER,
+    relpath     TEXT,
+    FOREIGN KEY(source_id) REFERENCES dirlists(id)
 );
 
-CREATE TABLE accession_batches(
-    id         INTEGER PRIMARY KEY UNIQUE NOT NULL,
-    name       TEXT,
-    date       TEXT
+CREATE TABLE batches(
+    id          INTEGER PRIMARY KEY UNIQUE NOT NULL,
+    name        TEXT
 );
 
-CREATE INDEX md5_lookup on files(md5);
-CREATE INDEX filename_lookup on files(filename);
-CREATE INDEX namesize_lookup on files(filename, bytes);
+CREATE INDEX md5_lookup on instances(md5);
+CREATE INDEX filename_lookup on instances(filename);
+CREATE INDEX namesize_lookup on instances(filename, bytes);

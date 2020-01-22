@@ -83,6 +83,7 @@ class DirList():
     def __init__(self, path):
         self.filename = os.path.basename(path)
         self.path = path
+        self.bytes = int(os.path.getsize(path))
         self.md5 = calculate_md5(path)
         self.dirlines = 0
         self.extralines = 0
