@@ -20,6 +20,7 @@ class Asset():
         self.timestamp = timestamp
         self.md5 = md5
         self.restored = []
+        self.duplicates = []
         self.extra_copies = []
         self.sourcefile = sourcefile
         self.sourceline = sourceline

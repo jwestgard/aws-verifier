@@ -89,7 +89,6 @@ def main():
             continue
             
         # Add "best match" duplicates to transfer batch
-        print(restores)
         common_path = os.path.commonpath(restores)
         print(f"  Common Path: {common_path}")
         for asset in assets_with_duplicates:
