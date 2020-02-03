@@ -6,3 +6,4 @@ EXCLUDES:
     - ".DS_Store"
     - "Thumbs.db"
     - "IndexerVolumeGUID"
+    - "desktop.ini"

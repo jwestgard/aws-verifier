@@ -4,8 +4,8 @@ import os
 import re
 import sys
 
-from utils import calculate_md5
-from utils import human_readable
+from .utils import calculate_md5
+from .utils import human_readable
 
 
 class Asset():

@@ -47,6 +47,8 @@ def main():
 
         # (4) Process assets
         print(f"  Processing batch assets...")
+        assets_with_duplicates = []
+        restores = []
         for n, asset in enumerate(batch.assets, 1):
             # a. skip excluded filenames
             if asset.filename in exclude_patterns:
@@ -65,15 +67,45 @@ def main():
                 matches = database.match_filename(asset)
             elif asset.md5 is None and asset.bytes is not None:
                 matches = database.match_filename_bytes(asset)
-            else:
+            
+            # if previous has failed, try simple filename match
+            if not matches:
                 matches = database.match_filename_bytes_md5(asset)
 
             if matches:
                 asset.status = 'Found'
-                asset.restored = matches[0]
-                asset.extra_copies = matches[1:]
+                if len(matches) == 1:
+                    asset.restored = matches[0]
+                    restores.append(matches[0].path)
+                else:
+                    asset.duplicates = matches
+                    assets_with_duplicates.append(asset)
             else:
                 asset.status = 'NotFound'
+            
+        # if nothing in batch was found, abort here
+        if all([asset.status == 'NotFound' for asset in batch.assets]):
+            print(f'  No Assets in this batch were found. Skipping...')
+            continue
+            
+        # Add "best match" duplicates to transfer batch
+        print(restores)
+        common_path = os.path.commonpath(restores)
+        print(f"  Common Path: {common_path}")
+        for asset in assets_with_duplicates:
+            for candidate in asset.duplicates:
+                if candidate.path.startswith(common_path):
+                    asset.restored = candidate
+                    asset.duplicates.remove(candidate)
+                    asset.extra_copies.extend(asset.duplicates)
+                    break
+                else:
+                    asset.extra_copies.append(candidate)
+            # if a relpath match is not found, use first duplicate
+            if not asset.restored:
+                asset.restored = asset.extra_copies.pop(0)
+            print(asset.restored.path)
+            print([f.path for f in asset.extra_copies])
 
         # Update batch status to reflect state of assets
         if all([a.status == 'Found' for a in batch.assets]):
